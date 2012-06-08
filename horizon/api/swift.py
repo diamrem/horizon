@@ -102,6 +102,18 @@ def swift_get_objects(request, container_name, prefix=None, path=None,
         return (objects, False)
 
 
+def swift_filter_objects(request, filter_string, container_name, prefix=None,
+                        path=None, marker=None):
+    _objects, _has_more = swift_get_objects(request,
+                                container_name=container_name,
+                                prefix=prefix,
+                                path=path,
+                                marker=marker)
+    filter_string = filter_string.lower()
+
+    return filter(lambda object: filter_string in object.name.lower(),
+                    _objects)
+
 def swift_copy_object(request, orig_container_name, orig_object_name,
                       new_container_name, new_object_name):
     try:
