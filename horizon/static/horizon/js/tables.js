@@ -33,21 +33,27 @@ horizon.addInitFunction(function() {
         checkboxes = $table.find('tbody :checkbox');
     checkboxes.prop('checked', is_checked);
   });
-  $('.table_search input').quicksearch('tbody tr', {
-    'delay': 300,
-    'loader': 'span.loading',
-    'bind': 'keyup click',
-    'show': function () {
-      this.style.display = '';
-    },
-    'hide': function () {
-      this.style.display = 'none';
-    },
-    'prepareQuery': function (val) {
-      return new RegExp(val, "i");
-    },
-    'testQuery': function (query, txt, _row) {
-      return query.test($(_row).find('td:not(.hidden)').text());
+
+  $('table').each(function (index, elm) {
+    var input = $($(elm).find('div.table_search input'));
+    if (input) {
+      input.quicksearch('table#' + $(elm).attr('id') + ' tbody tr', {
+        'delay': 300,
+        'loader': 'span.loading',
+        'bind': 'keyup click',
+        'show': function () {
+          this.style.display = '';
+        },
+        'hide': function () {
+          this.style.display = 'none';
+        },
+        'prepareQuery': function (val) {
+          return new RegExp(val, "i");
+        },
+        'testQuery': function (query, txt, _row) {
+          return query.test($(_row).find('td:not(.hidden)').text());
+        }
+      });
     }
   });
 
