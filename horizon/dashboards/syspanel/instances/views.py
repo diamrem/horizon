@@ -75,7 +75,18 @@ class AdminIndexView(tables.DataTableView):
             full_flavors = SortedDict([(f.id, f) for f in flavors])
             tenant_dict = SortedDict([(t.id, t) for t in tenants])
             for inst in instances:
-                inst.full_flavor = full_flavors.get(inst.flavor["id"], None)
+                flavor_id = inst.flavor["id"]
+                try:
+                    if flavor_id in full_flavors:
+                        inst.full_flavor = full_flavors[flavor_id]
+                    else:
+                        #If the flavor_id in not in full_flavors list,
+                        #get it via nova api
+                        inst.full_flavor = api.nova.flavor_get(
+                                        self.request, flavor_id)
+                except:
+                    msg = _('Unable to retrieve instance size information.')
+                    exceptions.handle(self.request, msg)
                 tenant = tenant_dict.get(inst.tenant_id, None)
                 inst.tenant_name = getattr(tenant, "name", None)
         return instances

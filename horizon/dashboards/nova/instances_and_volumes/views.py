@@ -58,7 +58,13 @@ class IndexView(tables.MultiTableView):
                                                 flavor in flavors])
                     for instance in instances:
                         flavor_id = instance.flavor["id"]
-                        instance.full_flavor = full_flavors[flavor_id]
+                        if flavor_id in full_flavors:
+                            instance.full_flavor = full_flavors[flavor_id]
+                        else:
+                            #If the flavor_id in not in full_flavors list,
+                            #get it via nova api
+                            instance.full_flavor = api.nova.flavor_get(
+                                            self.request, flavor_id)
                 except:
                     msg = _('Unable to retrieve instance size information.')
                     exceptions.handle(self.request, msg)

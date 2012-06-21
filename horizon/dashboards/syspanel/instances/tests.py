@@ -43,6 +43,54 @@ class InstanceViewTest(test.BaseAdminViewTests):
         instances = res.context['table'].data
         self.assertItemsEqual(instances, servers)
 
+    def test_index_flavor_list_exception(self):
+        servers = self.servers.list()
+        tenants = self.tenants.list()
+        self.mox.StubOutWithMock(api.nova, 'server_list')
+        self.mox.StubOutWithMock(api.nova, 'flavor_list')
+        self.mox.StubOutWithMock(api.keystone, 'tenant_list')
+        #call tenat_list as normal
+        api.keystone.tenant_list(IsA(http.HttpRequest), admin=True).\
+                                 AndReturn(tenants)
+        #call server_list as normal
+        api.nova.server_list(IsA(http.HttpRequest),
+                             all_tenants=True).AndReturn(servers)
+        #fetches flavor_list but raise exceptions
+        api.nova.flavor_list(IsA(http.HttpRequest)). \
+                            AndRaise(self.exceptions.nova)
+        self.mox.ReplayAll()
+
+        res = self.client.get(reverse('horizon:syspanel:instances:index'))
+        self.assertTemplateUsed(res, 'syspanel/instances/index.html')
+        #instances = res.context['table'].data
+        #self.assertItemsEqual(instances, servers)
+
+    """
+    def test_index_get_flavor_exception(self):
+        servers = self.servers.list()
+        flavors = self.flavors.list()
+        tenants = self.tenants.list()
+        false_flavor_id = max([flavor.id for flavor in flavors]) + 1
+        self.mox.StubOutWithMock(api.keystone, 'tenant_list')
+        self.mox.StubOutWithMock(api.nova, 'server_list')
+        self.mox.StubOutWithMock(api.nova, 'flavor_list')
+        
+        api.keystone.tenant_list(IsA(http.HttpRequest), admin=True).\
+                                 AndReturn(tenants)
+        api.nova.server_list(IsA(http.HttpRequest),
+                             all_tenants=True).AndReturn(servers)
+        api.nova.flavor_list(IsA(http.HttpRequest)). \
+                            AndReturn(flavors)
+        api.nova.flavor_get(IsA(http.HttpRequest), false_flavor_id). \
+                            AndRaised(self.exceptions.nova)
+        self.mox.ReplayAll()
+
+        res = self.client.get(reverse('horizon:syspanel:instances:index'))
+        self.assertTemplateUsed(res, 'syspanel/instances/index.html')
+        instances = res.context['table'].data
+        self.assertItemsEqual(instances, servers)
+    """
+
     def test_index_server_list_exception(self):
         self.mox.StubOutWithMock(api.nova, 'server_list')
         self.mox.StubOutWithMock(api.nova, 'flavor_list')
