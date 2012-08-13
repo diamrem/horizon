@@ -37,9 +37,15 @@ CONTAINER_INDEX_URL = reverse('horizon:nova:containers:index')
 class SwiftTests(test.TestCase):
     def test_index_no_container_selected(self):
         containers = self.containers.list()
+        ret = (self.objects.list(), False)
         self.mox.StubOutWithMock(api, 'swift_get_containers')
+        self.mox.StubOutWithMock(api, 'swift_get_objects')
         api.swift_get_containers(IsA(http.HttpRequest), marker=None) \
                                 .AndReturn((containers, False))
+        api.swift_get_objects(IsA(http.HttpRequest),
+                              self.containers.first().name,
+                              marker=None,
+                              prefix=None).AndReturn(ret)
         self.mox.ReplayAll()
 
         res = self.client.get(CONTAINER_INDEX_URL)
@@ -48,6 +54,10 @@ class SwiftTests(test.TestCase):
         self.assertIn('table', res.context)
         resp_containers = res.context['table'].data
         self.assertEqual(len(resp_containers), len(containers))
+        expected = [obj.name.encode('utf8') for obj in self.objects.list()]
+        self.assertQuerysetEqual(res.context['objects_table'].data,
+                                 expected,
+                                 lambda obj: obj.name.encode('utf8'))
 
     def test_delete_container(self):
         container = self.containers.get(name=u"container_two\u6346")

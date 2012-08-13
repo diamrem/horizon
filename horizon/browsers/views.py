@@ -14,8 +14,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from collections import defaultdict
-
 from django.utils.translation import ugettext_lazy as _
 
 from horizon.tables import MultiTableView
@@ -31,15 +29,50 @@ class ResourceBrowserView(MultiTableView):
                              % self.__class__.__name__)
         self.table_classes = (self.browser_class.navigation_table_class,
                               self.browser_class.content_table_class)
-        super(ResourceBrowserView, self).__init__(*args, **kwargs)
         self.navigation_selection = False
+        super(ResourceBrowserView, self).__init__(*args, **kwargs)
+
+    def _get_data_dict(self):
+        navigation_kwarg_name = self.browser_class.navigation_kwarg_name
+        if self.kwargs.get(navigation_kwarg_name, None):
+            self.navigation_selection = True
+        if not self._data:
+            if not self.navigation_selection:
+                # If there is nothing being selected in the navigation table,
+                # Try to fetch the navigtation items first, then assign the
+                # name of first item of the navigatables to the
+                # kwargs of this view.
+                nav_tbl_name = self.browser_class \
+                                   .navigation_table_class \
+                                   ._meta.name
+                content_tbl_name = self.browser_class \
+                                       .content_table_class \
+                                       ._meta.name
+                tables = self.get_tables()
+                navigation_data_funcs = self._data_methods.pop(nav_tbl_name)
+                nav_data = []
+                for func in navigation_data_funcs:
+                    nav_data.extend(func())
+                self._data[nav_tbl_name] = nav_data
+                if nav_data:
+                    first_navigatable = tables.get(nav_tbl_name) \
+                                              .get_object_id(nav_data[0])
+                    self.kwargs[navigation_kwarg_name] = first_navigatable
+                content_data = []
+                content_data_funcs = self._data_methods.pop(content_tbl_name)
+                for func in content_data_funcs:
+                    content_data.extend(func())
+                self._data[content_tbl_name] = content_data
+            else:
+                super(ResourceBrowserView, self)._get_data_dict()
+        return self._data
 
     def get_browser(self):
         if not hasattr(self, "browser"):
             self.browser = self.browser_class(self.request, **self.kwargs)
             self.browser.set_tables(self.get_tables())
-            if not self.navigation_selection:
-                ct = self.browser.content_table
+            ct = self.browser.content_table
+            if not self.navigation_selection and ct.data:
                 item = self.browser.navigable_item_name.lower()
                 ct._no_data_message = _("Select a %s to browse.") % item
         return self.browser
